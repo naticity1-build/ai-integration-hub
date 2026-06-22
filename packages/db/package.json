@@ -17,6 +17,7 @@
     "seed": "tsx src/seed-demo.ts"
   },
   "dependencies": {
+    "@hub/connectors": "*",
     "@hub/core": "*",
     "@supabase/supabase-js": "^2.49.0"
   },
