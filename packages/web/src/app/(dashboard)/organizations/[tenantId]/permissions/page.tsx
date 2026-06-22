@@ -20,6 +20,9 @@ export default async function OrgPermissionsPage({
   return (
     <div>
       <h2 style={{ fontSize: "1.25rem", marginBottom: "1rem" }}>הרשאות</h2>
+      <p style={{ color: "var(--muted)", marginBottom: "1.25rem", maxWidth: 560 }}>
+        לאחר מתן הרשאה, קישור MCP אישי ל-Claude.ai נוצר אוטומטית עבור המשתמש.
+      </p>
       <PermissionsAdminClient
         tenantId={tenantId}
         token={token}

@@ -32,6 +32,7 @@ export class InMemoryHubStore implements HubStore {
       userId: string;
       tenantId: string;
       tokenHash: string;
+      accessKey: string | null;
       name: string;
       createdAt: Date;
       revokedAt: Date | null;
@@ -421,6 +422,7 @@ export class InMemoryHubStore implements HubStore {
     userId: string;
     tenantId: string;
     tokenHash: string;
+    accessKey?: string;
     name?: string;
     expiresAt?: Date | null;
   }) {
@@ -430,6 +432,7 @@ export class InMemoryHubStore implements HubStore {
       userId: data.userId,
       tenantId: data.tenantId,
       tokenHash: data.tokenHash,
+      accessKey: data.accessKey ?? null,
       name: data.name ?? "default",
       createdAt: new Date(),
       revokedAt: null,
@@ -449,12 +452,48 @@ export class InMemoryHubStore implements HubStore {
         createdAt: t.createdAt,
         expiresAt: t.expiresAt,
         revokedAt: t.revokedAt,
+        accessKey: t.accessKey,
       }))
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
 
   async getMcpTokenByHash(tokenHash: string) {
     return this.mcpTokens.get(tokenHash) ?? null;
+  }
+
+  async getMcpTokenByAccessKey(accessKey: string) {
+    for (const token of this.mcpTokens.values()) {
+      if (token.accessKey === accessKey) {
+        return {
+          id: token.id,
+          userId: token.userId,
+          tenantId: token.tenantId,
+          revokedAt: token.revokedAt,
+          expiresAt: token.expiresAt,
+        };
+      }
+    }
+    return null;
+  }
+
+  async getActiveMcpAccessForUser(userId: string) {
+    const now = new Date();
+    for (const token of this.mcpTokens.values()) {
+      if (token.userId !== userId || token.revokedAt) continue;
+      if (token.expiresAt && token.expiresAt < now) continue;
+      if (!token.accessKey) continue;
+      return { accessKey: token.accessKey };
+    }
+    return null;
+  }
+
+  async revokeActiveMcpTokensForUser(userId: string) {
+    const now = new Date();
+    for (const token of this.mcpTokens.values()) {
+      if (token.userId === userId && !token.revokedAt) {
+        token.revokedAt = now;
+      }
+    }
   }
 
   async getMcpToken(id: string) {

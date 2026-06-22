@@ -355,6 +355,7 @@ export class SupabaseHubStore implements HubStore {
     userId: string;
     tenantId: string;
     tokenHash: string;
+    accessKey?: string;
     name?: string;
     expiresAt?: Date | null;
   }) {
@@ -364,6 +365,7 @@ export class SupabaseHubStore implements HubStore {
         user_id: data.userId,
         tenant_id: data.tenantId,
         token_hash: data.tokenHash,
+        access_key: data.accessKey ?? null,
         name: data.name ?? "default",
         expires_at: data.expiresAt?.toISOString() ?? null,
       })
@@ -377,7 +379,7 @@ export class SupabaseHubStore implements HubStore {
   async listMcpTokens(tenantId: string, userId?: string) {
     let query = this.client
       .from("mcp_tokens")
-      .select("id, user_id, tenant_id, name, created_at, expires_at, revoked_at")
+      .select("id, user_id, tenant_id, name, created_at, expires_at, revoked_at, access_key")
       .eq("tenant_id", tenantId)
       .order("created_at", { ascending: false });
 
@@ -396,6 +398,7 @@ export class SupabaseHubStore implements HubStore {
       created_at: string;
       expires_at: string | null;
       revoked_at: string | null;
+      access_key: string | null;
     }[]).map((row) => ({
       id: row.id,
       userId: row.user_id,
@@ -404,6 +407,7 @@ export class SupabaseHubStore implements HubStore {
       createdAt: new Date(row.created_at),
       expiresAt: row.expires_at ? new Date(row.expires_at) : null,
       revokedAt: row.revoked_at ? new Date(row.revoked_at) : null,
+      accessKey: row.access_key,
     }));
   }
 
@@ -429,6 +433,60 @@ export class SupabaseHubStore implements HubStore {
       revokedAt: row.revoked_at ? new Date(row.revoked_at) : null,
       expiresAt: row.expires_at ? new Date(row.expires_at) : null,
     };
+  }
+
+  async getMcpTokenByAccessKey(accessKey: string) {
+    const { data } = await this.client
+      .from("mcp_tokens")
+      .select("id, user_id, tenant_id, revoked_at, expires_at")
+      .eq("access_key", accessKey)
+      .single();
+
+    if (!data) return null;
+    const row = data as {
+      id: string;
+      user_id: string;
+      tenant_id: string;
+      revoked_at: string | null;
+      expires_at: string | null;
+    };
+    return {
+      id: row.id,
+      userId: row.user_id,
+      tenantId: row.tenant_id,
+      revokedAt: row.revoked_at ? new Date(row.revoked_at) : null,
+      expiresAt: row.expires_at ? new Date(row.expires_at) : null,
+    };
+  }
+
+  async getActiveMcpAccessForUser(userId: string) {
+    const { data } = await this.client
+      .from("mcp_tokens")
+      .select("access_key, expires_at, revoked_at")
+      .eq("user_id", userId)
+      .is("revoked_at", null)
+      .not("access_key", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!data) return null;
+    const row = data as {
+      access_key: string;
+      expires_at: string | null;
+      revoked_at: string | null;
+    };
+    if (row.revoked_at) return null;
+    if (row.expires_at && new Date(row.expires_at) < new Date()) return null;
+    return { accessKey: row.access_key };
+  }
+
+  async revokeActiveMcpTokensForUser(userId: string) {
+    await this.client
+      .from("mcp_tokens")
+      .update({ revoked_at: new Date().toISOString() })
+      .eq("user_id", userId)
+      .is("revoked_at", null);
   }
 
   async getMcpToken(id: string) {

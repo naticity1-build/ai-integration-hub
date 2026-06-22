@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { createHubMcpServer } from "./server.js";
 import type { HubDataStore, HubStore } from "@hub/db";
-import { resolveUserFromMcpToken } from "@hub/auth";
+import { resolveUserFromMcpToken, resolveUserFromAccessKey } from "@hub/auth";
 
 export interface HttpMcpServerOptions {
   store: HubDataStore;
@@ -34,7 +34,8 @@ function checkRateLimit(key: string): boolean {
 async function resolveUserId(
   req: IncomingMessage,
   store: HubDataStore,
-  defaultUserId: string
+  defaultUserId: string,
+  pathname: string
 ): Promise<string | null> {
   const auth = req.headers.authorization;
   if (auth?.startsWith("Bearer ")) {
@@ -42,6 +43,13 @@ async function resolveUserId(
     const resolved = await resolveUserFromMcpToken(token, store as HubStore);
     if (resolved) return resolved.userId;
   }
+
+  const accessKeyMatch = pathname.match(/^\/mcp\/([^/]+)$/);
+  if (accessKeyMatch?.[1]) {
+    const resolved = await resolveUserFromAccessKey(accessKeyMatch[1], store as HubStore);
+    if (resolved) return resolved.userId;
+  }
+
   return defaultUserId || null;
 }
 
@@ -58,13 +66,15 @@ export async function startHttpMcpServer(options: HttpMcpServerOptions): Promise
       return;
     }
 
-    if (url.pathname !== "/mcp") {
+    const isMcpPath =
+      url.pathname === "/mcp" || /^\/mcp\/[^/]+$/.test(url.pathname);
+    if (!isMcpPath) {
       res.writeHead(404);
       res.end("Not found");
       return;
     }
 
-    const userId = await resolveUserId(req, options.store, options.defaultUserId);
+    const userId = await resolveUserId(req, options.store, options.defaultUserId, url.pathname);
     if (!userId) {
       res.writeHead(401);
       res.end(JSON.stringify({ error: "Unauthorized" }));

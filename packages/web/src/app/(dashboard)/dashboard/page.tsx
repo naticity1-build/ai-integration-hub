@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { apiFetch } from "@/lib/api";
 import { getAuthContext, getHubStore } from "@/lib/server-auth";
+import { ClaudeConnectCard } from "@/components/claude-connect-card";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -48,6 +49,8 @@ export default async function DashboardPage() {
     <div>
       <h1 style={{ fontSize: "1.75rem", marginBottom: "1.5rem" }}>לוח בקרה</h1>
 
+      {token && !isSuperAdmin && <ClaudeConnectCard token={token} />}
+
       {isSuperAdmin && (
         <>
           <div
@@ -78,36 +81,41 @@ export default async function DashboardPage() {
       )}
 
       {isOrgAdmin && (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)",
-            gap: "1rem",
-            marginBottom: "2rem",
-          }}
-        >
-          <div className="card">
-            <p style={{ color: "var(--muted)", fontSize: "0.875rem" }}>חיבורים</p>
-            <p style={{ fontSize: "2rem", fontWeight: 600 }}>{tenantStats.connections}</p>
+        <>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(3, 1fr)",
+              gap: "1rem",
+              marginBottom: "2rem",
+            }}
+          >
+            <div className="card">
+              <p style={{ color: "var(--muted)", fontSize: "0.875rem" }}>חיבורים</p>
+              <p style={{ fontSize: "2rem", fontWeight: 600 }}>{tenantStats.connections}</p>
+            </div>
+            <div className="card">
+              <p style={{ color: "var(--muted)", fontSize: "0.875rem" }}>משתמשים</p>
+              <p style={{ fontSize: "2rem", fontWeight: 600 }}>{tenantStats.users}</p>
+            </div>
+            <div className="card">
+              <p style={{ color: "var(--muted)", fontSize: "0.875rem" }}>פעילות אחרונה</p>
+              <p style={{ fontSize: "2rem", fontWeight: 600 }}>{tenantStats.recentAudit}</p>
+            </div>
           </div>
-          <div className="card">
-            <p style={{ color: "var(--muted)", fontSize: "0.875rem" }}>משתמשים</p>
-            <p style={{ fontSize: "2rem", fontWeight: 600 }}>{tenantStats.users}</p>
+          <div className="card" style={{ marginBottom: "1.5rem" }}>
+            <p style={{ color: "var(--muted)", marginBottom: "0.75rem" }}>
+              תן הרשאות — קישור MCP אישי ל-Claude.ai נוצר אוטומטית למשתמשים.
+            </p>
+            <p style={{ fontSize: "0.875rem" }}>
+              <Link href="/permissions">ניהול הרשאות</Link>
+              {" · "}
+              <Link href="/connections">חיבורים</Link>
+              {" · "}
+              <Link href="/users">משתמשים</Link>
+            </p>
           </div>
-          <div className="card">
-            <p style={{ color: "var(--muted)", fontSize: "0.875rem" }}>פעילות אחרונה</p>
-            <p style={{ fontSize: "2rem", fontWeight: 600 }}>{tenantStats.recentAudit}</p>
-          </div>
-        </div>
-      )}
-
-      {!isSuperAdmin && !isOrgAdmin && (
-        <div className="card" style={{ marginBottom: "1.5rem" }}>
-          <h2 style={{ marginBottom: "0.75rem" }}>ברוכים הבאים</h2>
-          <p style={{ color: "var(--muted)" }}>
-            לקבלת גישה ל-MCP (Cursor / Claude Desktop), פנה למנהל הארגון שלך ליצירת טוקן אישי.
-          </p>
-        </div>
+        </>
       )}
 
       <div className="card">
@@ -115,15 +123,6 @@ export default async function DashboardPage() {
         <p style={{ color: "var(--muted)" }}>
           מערכת תיווך מאובטחת בין מקורות מידע ארגוניים למודלי AI דרך MCP.
         </p>
-        {isOrgAdmin && (
-          <p style={{ color: "var(--muted)", marginTop: "0.5rem", fontSize: "0.875rem" }}>
-            <Link href="/users">ניהול משתמשים וטוקני MCP</Link>
-            {" · "}
-            <Link href="/connections">חיבורים</Link>
-            {" · "}
-            <Link href="/permissions">הרשאות</Link>
-          </p>
-        )}
       </div>
     </div>
   );

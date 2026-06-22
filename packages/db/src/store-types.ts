@@ -94,6 +94,7 @@ export interface HubAdminStore {
     userId: string;
     tenantId: string;
     tokenHash: string;
+    accessKey?: string;
     name?: string;
     expiresAt?: Date | null;
   }): Promise<{ id: string }>;
@@ -109,6 +110,7 @@ export interface HubAdminStore {
       createdAt: Date;
       expiresAt: Date | null;
       revokedAt: Date | null;
+      accessKey: string | null;
     }[]
   >;
   getMcpTokenByHash(tokenHash: string): Promise<{
@@ -118,6 +120,15 @@ export interface HubAdminStore {
     revokedAt: Date | null;
     expiresAt: Date | null;
   } | null>;
+  getMcpTokenByAccessKey(accessKey: string): Promise<{
+    id: string;
+    userId: string;
+    tenantId: string;
+    revokedAt: Date | null;
+    expiresAt: Date | null;
+  } | null>;
+  getActiveMcpAccessForUser(userId: string): Promise<{ accessKey: string } | null>;
+  revokeActiveMcpTokensForUser(userId: string): Promise<void>;
   getMcpToken(id: string): Promise<{
     id: string;
     userId: string;

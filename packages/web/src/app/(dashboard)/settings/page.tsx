@@ -1,17 +1,10 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-import { getAuthContext, getHubStore } from "@/lib/server-auth";
+import { getAuthContext } from "@/lib/server-auth";
 import { getMcpServerUrl } from "@/lib/mcp-config";
-import { SuperAdminMcpTokenClient } from "@/components/super-admin-mcp-token-client";
 
 export default async function SettingsPage() {
   const auth = await getAuthContext();
   if (!auth?.isSuperAdmin) redirect("/dashboard");
-
-  const supabase = await createClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  const store = getHubStore();
-  const hubUser = await store.getUserContext(auth.userId);
 
   const mcpServerUrl = getMcpServerUrl();
 
@@ -19,16 +12,10 @@ export default async function SettingsPage() {
     <div>
       <h1 style={{ fontSize: "1.75rem", marginBottom: "1.5rem" }}>הגדרות מערכת</h1>
 
-      <SuperAdminMcpTokenClient
-        token={session?.access_token ?? ""}
-        userId={auth.userId}
-        hasHubUser={!!hubUser}
-      />
-
       <div className="card" style={{ marginBottom: "1.5rem" }}>
-        <h2 style={{ fontSize: "1rem", marginBottom: "0.75rem" }}>שרת MCP ציבורי</h2>
+        <h2 style={{ fontSize: "1rem", marginBottom: "0.75rem" }}>שרת MCP</h2>
         <p style={{ color: "var(--muted)", fontSize: "0.875rem", marginBottom: "0.75rem" }}>
-          כתובת זו מוצגת למנהלי ארגון בעת יצירת טוקני MCP למשתמשים.
+          משתמשים עם הרשאה מקבלים קישור MCP אישי ל-Claude.ai (דפדפן). אין צורך ב-Desktop או ב-Cursor.
         </p>
         <code
           style={{
@@ -40,18 +27,10 @@ export default async function SettingsPage() {
             wordBreak: "break-all",
           }}
         >
-          {mcpServerUrl}
+          {mcpServerUrl.replace(/\/mcp\/?$/, "")}/mcp/ack_...
         </code>
         <p style={{ color: "var(--muted)", fontSize: "0.75rem", marginTop: "0.75rem" }}>
-          ניתן לשנות באמצעות משתנה הסביבה{" "}
-          <code>NEXT_PUBLIC_MCP_SERVER_URL</code> ב-Vercel.
-        </p>
-      </div>
-
-      <div className="card">
-        <h2 style={{ fontSize: "1rem", marginBottom: "0.5rem" }}>הגדרות נוספות</h2>
-        <p style={{ color: "var(--muted)", fontSize: "0.875rem" }}>
-          הגדרות מערכת נוספות יתווספו בעתיד.
+          בסיס הכתובת נקבע ב-<code>NEXT_PUBLIC_MCP_SERVER_URL</code> ב-Vercel.
         </p>
       </div>
     </div>

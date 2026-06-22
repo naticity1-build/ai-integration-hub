@@ -24,6 +24,10 @@ export default async function PermissionsPage() {
   return (
     <div>
       <h1 style={{ fontSize: "1.75rem", marginBottom: "1.5rem" }}>הרשאות</h1>
+      <p style={{ color: "var(--muted)", marginBottom: "1.25rem", maxWidth: 560 }}>
+        בחר משתמש, מקור נתונים וכלים. לאחר השמירה — קישור MCP אישי יופיע אצל המשתמש ב-Claude.ai
+        (לוח בקרה → העתקה ל-Settings → Connectors).
+      </p>
       <PermissionsAdminClient
         tenantId={tenantId}
         token={token}

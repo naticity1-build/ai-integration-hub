@@ -12,6 +12,10 @@ import {
   canManageTenant,
   registerUser,
   updateUserAsAdmin,
+  ensureMcpAccess,
+  syncMcpAccessForGrant,
+  syncUserMcpAccess,
+  usersAffectedByGrant,
   type AuthContext,
 } from "@hub/auth";
 import {
@@ -193,6 +197,23 @@ api.get("/me", async (c) => {
   return c.json({ auth, user });
 });
 
+api.get("/me/mcp-connection", async (c) => {
+  const auth = requireAuth(c);
+  if (auth.isSuperAdmin && !auth.tenantId) {
+    return c.json({ hasAccess: false, connectionUrl: null });
+  }
+
+  const access = await ensureMcpAccess(store, auth.userId);
+  if (!access) {
+    return c.json({ hasAccess: false, connectionUrl: null });
+  }
+
+  return c.json({
+    hasAccess: true,
+    connectionUrl: access.connectionUrl,
+  });
+});
+
 // Tenants (super-admin only)
 api.get("/tenants", async (c) => {
   const auth = requireAuth(c);
@@ -290,6 +311,7 @@ api.patch("/tenants/:tenantId/users/:userId", async (c) => {
     tenantId,
     { ...body, roleName }
   );
+  await syncUserMcpAccess(store, c.req.param("userId"));
   return c.json(user);
 });
 
@@ -583,6 +605,7 @@ api.post("/tenants/:tenantId/grants", async (c) => {
   assertTenantManage(auth, tenantId);
   const body = await c.req.json<Omit<import("@hub/core").PermissionGrant, "id" | "createdAt">>();
   const grant = await store.createGrant({ ...body, tenantId });
+  await syncMcpAccessForGrant(store, tenantId, grant);
   await store.logAudit({
     tenantId,
     userId: auth.userId,
@@ -597,12 +620,20 @@ api.delete("/tenants/:tenantId/grants/:grantId", async (c) => {
   const auth = requireAuth(c);
   const tenantId = c.req.param("tenantId");
   assertTenantManage(auth, tenantId);
-  await store.deleteGrant(c.req.param("grantId"));
+  const grantId = c.req.param("grantId");
+  const grants = await store.listGrants(tenantId);
+  const grant = grants.find((g) => g.id === grantId);
+  await store.deleteGrant(grantId);
+  if (grant) {
+    const users = await store.listUsers(tenantId);
+    const affected = usersAffectedByGrant(users, grant);
+    await Promise.all(affected.map((userId) => syncUserMcpAccess(store, userId)));
+  }
   await store.logAudit({
     tenantId,
     userId: auth.userId,
     action: "grant_deleted",
-    metadata: { grantId: c.req.param("grantId") },
+    metadata: { grantId },
   });
   return c.json({ ok: true });
 });
