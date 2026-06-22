@@ -97,12 +97,32 @@ export interface HubAdminStore {
     name?: string;
     expiresAt?: Date | null;
   }): Promise<{ id: string }>;
+  listMcpTokens(
+    tenantId: string,
+    userId?: string
+  ): Promise<
+    {
+      id: string;
+      userId: string;
+      tenantId: string;
+      name: string;
+      createdAt: Date;
+      expiresAt: Date | null;
+      revokedAt: Date | null;
+    }[]
+  >;
   getMcpTokenByHash(tokenHash: string): Promise<{
     id: string;
     userId: string;
     tenantId: string;
     revokedAt: Date | null;
     expiresAt: Date | null;
+  } | null>;
+  getMcpToken(id: string): Promise<{
+    id: string;
+    userId: string;
+    tenantId: string;
+    revokedAt: Date | null;
   } | null>;
   revokeMcpToken(id: string): Promise<void>;
 

@@ -32,6 +32,8 @@ export class InMemoryHubStore implements HubStore {
       userId: string;
       tenantId: string;
       tokenHash: string;
+      name: string;
+      createdAt: Date;
       revokedAt: Date | null;
       expiresAt: Date | null;
     }
@@ -428,14 +430,45 @@ export class InMemoryHubStore implements HubStore {
       userId: data.userId,
       tenantId: data.tenantId,
       tokenHash: data.tokenHash,
+      name: data.name ?? "default",
+      createdAt: new Date(),
       revokedAt: null,
       expiresAt: data.expiresAt ?? null,
     });
     return { id };
   }
 
+  async listMcpTokens(tenantId: string, userId?: string) {
+    return [...this.mcpTokens.values()]
+      .filter((t) => t.tenantId === tenantId && (!userId || t.userId === userId))
+      .map((t) => ({
+        id: t.id,
+        userId: t.userId,
+        tenantId: t.tenantId,
+        name: t.name,
+        createdAt: t.createdAt,
+        expiresAt: t.expiresAt,
+        revokedAt: t.revokedAt,
+      }))
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+
   async getMcpTokenByHash(tokenHash: string) {
     return this.mcpTokens.get(tokenHash) ?? null;
+  }
+
+  async getMcpToken(id: string) {
+    for (const token of this.mcpTokens.values()) {
+      if (token.id === id) {
+        return {
+          id: token.id,
+          userId: token.userId,
+          tenantId: token.tenantId,
+          revokedAt: token.revokedAt,
+        };
+      }
+    }
+    return null;
   }
 
   async revokeMcpToken(id: string) {

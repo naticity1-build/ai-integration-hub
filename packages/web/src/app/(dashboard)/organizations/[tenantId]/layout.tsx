@@ -5,9 +5,9 @@ import { getAuthContext, getHubStore } from "@/lib/server-auth";
 const orgNav = [
   { href: "", label: "סקירה" },
   { href: "/connector-settings", label: "סוגי חיבורים" },
-  { href: "/users", label: "משתמשים" },
   { href: "/connections", label: "חיבורים" },
   { href: "/permissions", label: "הרשאות" },
+  { href: "/users", label: "משתמשים" },
   { href: "/audit", label: "לוגים" },
 ];
 

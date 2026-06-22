@@ -97,12 +97,75 @@ function assertTenantManage(auth: AuthContext, tenantId: string) {
 // Health
 api.get("/health", (c) => c.json({ status: "ok" }));
 
-// Current user MCP token
+// Self-service MCP token issuance is disabled — admins issue tokens per user
 api.post("/me/mcp-token", async (c) => {
+  requireAuth(c);
+  return c.json(
+    { error: "MCP tokens must be issued by an organization admin" },
+    403
+  );
+});
+
+// MCP tokens (org admin + super admin)
+api.get("/tenants/:tenantId/mcp-tokens", async (c) => {
   const auth = requireAuth(c);
-  const body = await c.req.json<{ name?: string; expiresInDays?: number }>().catch(() => ({}));
-  const result = await issueMcpToken(store, auth.userId, body);
-  return c.json(result);
+  const tenantId = c.req.param("tenantId");
+  assertTenantManage(auth, tenantId);
+  const userId = c.req.query("userId") || undefined;
+  const tokens = await store.listMcpTokens(tenantId, userId);
+  return c.json(tokens);
+});
+
+api.post("/tenants/:tenantId/users/:userId/mcp-tokens", async (c) => {
+  const auth = requireAuth(c);
+  const tenantId = c.req.param("tenantId");
+  const userId = c.req.param("userId");
+  assertTenantManage(auth, tenantId);
+
+  if (auth.isSuperAdmin && auth.userId === userId) {
+    return c.json({ error: "Super admins cannot issue MCP tokens for themselves" }, 403);
+  }
+
+  const targetUser = await store.getUser(userId);
+  if (!targetUser || targetUser.tenantId !== tenantId) {
+    return c.json({ error: "User not found in this organization" }, 404);
+  }
+
+  const body = (await c.req
+    .json<{ name?: string; expiresInDays?: number }>()
+    .catch(() => ({}))) as { name?: string; expiresInDays?: number };
+  const result = await issueMcpToken(store, userId, body);
+
+  await store.logAudit({
+    tenantId,
+    userId: auth.userId,
+    action: "mcp_token_issued",
+    metadata: { tokenId: result.tokenId, targetUserId: userId, name: body.name },
+  });
+
+  return c.json(result, 201);
+});
+
+api.delete("/tenants/:tenantId/mcp-tokens/:tokenId", async (c) => {
+  const auth = requireAuth(c);
+  const tenantId = c.req.param("tenantId");
+  const tokenId = c.req.param("tokenId");
+  assertTenantManage(auth, tenantId);
+
+  const token = await store.getMcpToken(tokenId);
+  if (!token || token.tenantId !== tenantId) {
+    return c.json({ error: "Token not found" }, 404);
+  }
+
+  await store.revokeMcpToken(tokenId);
+  await store.logAudit({
+    tenantId,
+    userId: auth.userId,
+    action: "mcp_token_revoked",
+    metadata: { tokenId, targetUserId: token.userId },
+  });
+
+  return c.json({ ok: true });
 });
 
 api.get("/me", async (c) => {

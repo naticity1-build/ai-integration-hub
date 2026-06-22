@@ -3,16 +3,16 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getAuthContext } from "@/lib/server-auth";
 
-const adminNavItems = [
+const orgAdminNavItems = [
   { href: "/users", label: "משתמשים" },
   { href: "/connections", label: "חיבורים" },
   { href: "/permissions", label: "הרשאות" },
   { href: "/audit", label: "לוגים" },
 ];
 
-const baseNavItems = [
-  { href: "/dashboard", label: "לוח בקרה" },
-  { href: "/mcp-setup", label: "הגדרת MCP" },
+const superAdminNavItems = [
+  { href: "/organizations", label: "ארגונים" },
+  { href: "/settings", label: "הגדרות מערכת" },
 ];
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -25,11 +25,13 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const isSuperAdmin = auth?.isSuperAdmin ?? false;
   const isOrgAdmin = auth?.roleName === "admin" && !!auth?.tenantId;
 
-  const navItems = [
-    ...baseNavItems,
-    ...(isSuperAdmin ? [{ href: "/organizations", label: "ארגונים" }] : []),
-    ...(isOrgAdmin ? adminNavItems : []),
-  ];
+  const navItems = [{ href: "/dashboard", label: "לוח בקרה" }];
+
+  if (isSuperAdmin) {
+    navItems.push(...superAdminNavItems);
+  } else if (isOrgAdmin) {
+    navItems.push(...orgAdminNavItems);
+  }
 
   let roleLabel = `תפקיד: ${auth?.roleName ?? "—"}`;
   if (isSuperAdmin && isOrgAdmin) roleLabel = "סופר אדמין · מנהל ארגון";

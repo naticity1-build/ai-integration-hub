@@ -374,6 +374,39 @@ export class SupabaseHubStore implements HubStore {
     return { id: (token as { id: string }).id };
   }
 
+  async listMcpTokens(tenantId: string, userId?: string) {
+    let query = this.client
+      .from("mcp_tokens")
+      .select("id, user_id, tenant_id, name, created_at, expires_at, revoked_at")
+      .eq("tenant_id", tenantId)
+      .order("created_at", { ascending: false });
+
+    if (userId) {
+      query = query.eq("user_id", userId);
+    }
+
+    const { data, error } = await query;
+    if (error || !data) return [];
+
+    return (data as {
+      id: string;
+      user_id: string;
+      tenant_id: string;
+      name: string;
+      created_at: string;
+      expires_at: string | null;
+      revoked_at: string | null;
+    }[]).map((row) => ({
+      id: row.id,
+      userId: row.user_id,
+      tenantId: row.tenant_id,
+      name: row.name,
+      createdAt: new Date(row.created_at),
+      expiresAt: row.expires_at ? new Date(row.expires_at) : null,
+      revokedAt: row.revoked_at ? new Date(row.revoked_at) : null,
+    }));
+  }
+
   async getMcpTokenByHash(tokenHash: string) {
     const { data } = await this.client
       .from("mcp_tokens")
@@ -395,6 +428,28 @@ export class SupabaseHubStore implements HubStore {
       tenantId: row.tenant_id,
       revokedAt: row.revoked_at ? new Date(row.revoked_at) : null,
       expiresAt: row.expires_at ? new Date(row.expires_at) : null,
+    };
+  }
+
+  async getMcpToken(id: string) {
+    const { data } = await this.client
+      .from("mcp_tokens")
+      .select("id, user_id, tenant_id, revoked_at")
+      .eq("id", id)
+      .single();
+
+    if (!data) return null;
+    const row = data as {
+      id: string;
+      user_id: string;
+      tenant_id: string;
+      revoked_at: string | null;
+    };
+    return {
+      id: row.id,
+      userId: row.user_id,
+      tenantId: row.tenant_id,
+      revokedAt: row.revoked_at ? new Date(row.revoked_at) : null,
     };
   }
 
