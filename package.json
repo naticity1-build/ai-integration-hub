@@ -1,0 +1,24 @@
+{
+  "name": "ai-integration-hub",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI Integration Hub + MCP Platform — secure multi-tenant bridge between enterprise data and AI",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "dev": "npm run dev -w @hub/mcp-server",
+    "dev:api": "npm run dev -w @hub/api",
+    "dev:web": "npm run dev -w @hub/web",
+    "dev:web:clean": "npm run dev:clean -w @hub/web",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "db:start": "supabase start",
+    "db:stop": "supabase stop",
+    "db:reset": "supabase db reset",
+    "db:migrate": "supabase db push"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "ai-integration-hub": {
+      "command": "node",
+      "args": ["packages/mcp-server/dist/index.js"],
+      "env": {
+        "HUB_STORE": "memory",
+        "HUB_USER_ID": "66666666-6666-6666-6666-666666666601"
+      }
+    },
+    "ai-integration-hub-http": {
+      "url": "http://localhost:3100/mcp",
+      "headers": {
+        "Authorization": "Bearer YOUR_MCP_TOKEN"
+      }
+    }
+  }
+}
