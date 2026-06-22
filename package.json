@@ -8,7 +8,7 @@
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
-    "build:mcp": "npm run build -w @hub/core && npm run build -w @hub/connectors && npm run build -w @hub/auth && npm run build -w @hub/db && npm run build -w @hub/mcp-server",
+    "build:mcp": "npm run build -w @hub/core && npm run build -w @hub/connectors && npm run build -w @hub/db && npm run build -w @hub/auth && npm run build -w @hub/mcp-server",
     "dev": "npm run dev -w @hub/mcp-server",
     "dev:api": "npm run dev -w @hub/api",
     "dev:web": "npm run dev -w @hub/web",
