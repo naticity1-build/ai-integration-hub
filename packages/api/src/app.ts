@@ -97,13 +97,36 @@ function assertTenantManage(auth: AuthContext, tenantId: string) {
 // Health
 api.get("/health", (c) => c.json({ status: "ok" }));
 
-// Self-service MCP token issuance is disabled — admins issue tokens per user
+// Self-service MCP token for super admins only
 api.post("/me/mcp-token", async (c) => {
-  requireAuth(c);
-  return c.json(
-    { error: "MCP tokens must be issued by an organization admin" },
-    403
-  );
+  const auth = requireAuth(c);
+  if (!auth.isSuperAdmin) {
+    return c.json(
+      { error: "MCP tokens must be issued by an organization admin" },
+      403
+    );
+  }
+
+  const body = (await c.req
+    .json<{ name?: string; expiresInDays?: number }>()
+    .catch(() => ({}))) as { name?: string; expiresInDays?: number };
+
+  try {
+    const result = await issueMcpToken(store, auth.userId, body);
+    const user = await store.getUserContext(auth.userId);
+    if (user) {
+      await store.logAudit({
+        tenantId: user.tenantId,
+        userId: auth.userId,
+        action: "mcp_token_issued",
+        metadata: { tokenId: result.tokenId, targetUserId: auth.userId, name: body.name, self: true },
+      });
+    }
+    return c.json(result, 201);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to issue token";
+    return c.json({ error: message }, 400);
+  }
 });
 
 // MCP tokens (org admin + super admin)
@@ -121,10 +144,6 @@ api.post("/tenants/:tenantId/users/:userId/mcp-tokens", async (c) => {
   const tenantId = c.req.param("tenantId");
   const userId = c.req.param("userId");
   assertTenantManage(auth, tenantId);
-
-  if (auth.isSuperAdmin && auth.userId === userId) {
-    return c.json({ error: "Super admins cannot issue MCP tokens for themselves" }, 403);
-  }
 
   const targetUser = await store.getUser(userId);
   if (!targetUser || targetUser.tenantId !== tenantId) {
